@@ -14,10 +14,180 @@
   <!-- Agora -->
   <script defer src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.2.js"></script>
 
-  <!-- App CSS -->
-  <link rel="stylesheet" href="styles.css" />
-  <!-- App JS -->
-  <script defer src="app.js"></script>
+  <style>
+    /* =========================================
+       CSS: TACTICAL UI V5 (ULTIMATE)
+       + Auth Gate Overlay (Google Required)
+       ========================================= */
+    :root{
+      --topH:58px;--navW:280px;--railW:70px;
+      --bg:#070b12;--bg2:#0b1020;--panel:rgba(20,25,35,.85);
+      --border:rgba(255,255,255,.12);--text:#eef2ff;--muted:#a9b4c6;
+      --primary:#9b7aff;--primary-glow:rgba(155,122,255,.25);
+      --accent:#53F6C7;--warn:#ffcc3c;--danger:#ff4d6d;--success:#21d07a;
+      --gold:#ffcc3c;
+      --shadow:0 10px 30px rgba(0,0,0,.5);
+      --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;outline:none}
+    body{
+      margin:0;padding:0;height:100vh;overflow:hidden;
+      display:flex;flex-direction:column;
+      background:radial-gradient(circle at top right, rgba(155,122,255,0.15), transparent 40%),
+                 linear-gradient(180deg,var(--bg),var(--bg2));
+      color:var(--text);font-family:var(--font);
+    }
+    .mono{font-family:ui-monospace,SFMono-Regular,monospace;letter-spacing:-.5px}
+    .hidden{display:none !important}
+
+    /* --- Top Bar --- */
+    .topbar{
+      height:var(--topH);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+      padding:0 12px;background:rgba(0,0,0,.3);
+      border-bottom:1px solid var(--border);backdrop-filter:blur(10px);
+      z-index:100;
+    }
+    .brand{font-weight:900;font-size:16px;color:var(--primary);display:flex;align-items:center;gap:8px}
+    .rightRow{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+    .pill{
+      height:28px;display:flex;align-items:center;gap:6px;
+      padding:0 10px;border-radius:99px;background:rgba(255,255,255,.05);
+      border:1px solid var(--border);font-size:11px;white-space:nowrap
+    }
+
+    /* --- Towers & LEDs --- */
+    .tower{display:flex;align-items:flex-end;gap:2px;height:12px}
+    .bar{width:3px;background:#444;border-radius:1px}
+    .b1{height:4px}.b2{height:7px}.b3{height:10px}.b4{height:13px}
+    .bar.on{background:var(--success);box-shadow:0 0 5px var(--success)}
+    .bar.warn{background:var(--warn)}
+    .bar.bad{background:var(--danger)}
+    .ledStrip{
+      display:flex;align-items:center;justify-content:space-between;
+      background:linear-gradient(90deg,#151a24,#1a202c);
+      padding:10px 15px;border-radius:16px;border:1px solid var(--border);
+      margin-bottom:15px;box-shadow:inset 0 2px 5px rgba(0,0,0,.3);
+    }
+    .led{
+      width:10px;height:10px;border-radius:50%;
+      background:#222;box-shadow:inset 0 1px 2px #000;transition:.2s;border:1px solid #444;
+    }
+    .led.on{background:var(--primary);box-shadow:0 0 8px var(--primary);border-color:#fff}
+    .led.warn.on{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+    .led.bad.on{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+
+    /* --- Layout --- */
+    .app-body{display:flex;flex:1;overflow:hidden;position:relative}
+    .drawer{
+      width:var(--railW);background:rgba(0,0,0,.4);
+      border-left:1px solid var(--border);display:flex;flex-direction:column;
+      gap:10px;padding:10px;transition:width .3s cubic-bezier(.4,0,.2,1);
+      z-index:90;backdrop-filter:blur(15px)
+    }
+    .drawer.open{width:var(--navW);background:var(--panel)}
+    .drawerOverlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;
+      opacity:0;pointer-events:none;transition:.3s;
+    }
+    .drawer.open + .drawerOverlay{opacity:1;pointer-events:auto}
+    .tabBtn{
+      height:44px;display:flex;align-items:center;gap:12px;padding:0 12px;border-radius:12px;
+      border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;
+      overflow:hidden;white-space:nowrap;transition:.2s;
+    }
+    .tabBtn:hover{background:rgba(255,255,255,.05)}
+    .tabBtn.active{background:var(--primary-glow);border-color:var(--primary);color:#fff}
+    .tabIco{font-size:18px;min-width:24px;text-align:center}
+    .tabTxt{opacity:0;transition:.2s;font-weight:bold;font-size:13px}
+    .drawer.open .tabTxt{opacity:1}
+    .content{flex:1;overflow-y:auto;padding:15px;position:relative}
+    .page{display:none;animation:fadeUp .3s ease}
+    .page.active{display:block}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+    .card{
+      background:var(--panel);border:1px solid var(--border);
+      border-radius:18px;padding:20px;box-shadow:var(--shadow);
+      position:relative;overflow:hidden
+    }
+    .screen{
+      background:#000;border:2px solid #333;border-radius:14px;height:180px;position:relative;overflow:hidden;
+      display:flex;flex-direction:column;box-shadow:inset 0 0 40px rgba(0,0,0,.8);
+    }
+    .screen::after{
+      content:"";position:absolute;inset:0;
+      background:linear-gradient(rgba(0,0,0,0) 50%, rgba(0,0,0,0.2) 50%);
+      background-size:100% 4px;pointer-events:none;z-index:5;
+    }
+    .controls{margin-top:15px;display:flex;flex-direction:column;gap:12px}
+    input{
+      width:100%;height:50px;background:rgba(0,0,0,.3);
+      border:1px solid var(--border);border-radius:12px;
+      padding:0 15px;color:#fff;font-size:16px;transition:.3s
+    }
+    input:focus{border-color:var(--primary);box-shadow:0 0 15px var(--primary-glow)}
+    .btnRow{display:flex;gap:10px}
+    .btn{
+      flex:1;height:50px;border:none;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;position:relative;overflow:hidden
+    }
+    .btn.primary{background:linear-gradient(135deg,var(--primary),#6d43ff);box-shadow:0 5px 15px var(--primary-glow)}
+    .btn.danger{background:rgba(255,77,109,.2);border:1px solid var(--danger);color:var(--danger)}
+    .btn.ghost{background:rgba(255,255,255,.05);border:1px solid var(--border)}
+    .btn.tiny{height:34px;font-size:12px;border-radius:10px}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+
+    .fm-panel{
+      background:linear-gradient(90deg, rgba(255,204,60,0.1), transparent);
+      border:1px solid rgba(255,204,60,0.3);border-radius:12px;padding:12px;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .switch{position:relative;width:44px;height:24px}
+    .switch input{opacity:0;width:0;height:0}
+    .slider{position:absolute;inset:0;background:#333;border-radius:24px;transition:.3s}
+    .slider:before{content:"";position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+    input:checked + .slider{background:var(--warn)}
+    input:checked + .slider:before{transform:translateX(20px)}
+
+    .overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.85);
+      display:flex;align-items:center;justify-content:center;
+      z-index:2000;opacity:0;pointer-events:none;transition:.3s;
+      backdrop-filter:blur(5px);
+    }
+    .overlay.show{opacity:1;pointer-events:auto}
+    .modal{
+      background:#151a22;width:92%;max-width:380px;
+      padding:22px;border-radius:20px;border:1px solid var(--primary);
+      text-align:center;transform:translateY(20px);transition:.3s;
+    }
+    .overlay.show .modal{transform:translateY(0)}
+    #waveCanvas{width:100%;height:100%;opacity:.7}
+
+    /* ===========================
+       AUTH GATE (LOCK)
+       =========================== */
+    body.auth-locked .app-body,
+    body.auth-locked .topbar{
+      filter: blur(2px);
+      pointer-events: none;
+      user-select: none;
+    }
+    .authTitle{margin:0 0 8px;font-size:18px;font-weight:900;color:#fff}
+    .authSub{margin:0 0 14px;font-size:12px;color:#aab}
+    .authBox{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.04);
+      border-radius:14px;
+      padding:12px;
+      text-align:right;
+      margin:12px 0;
+      color:#dbe;
+      font-size:12px;
+      line-height:1.55;
+    }
+    .authErr{color:var(--danger);font-size:12px;margin-top:10px;min-height:16px}
+  </style>
 </head>
 
 <body class="auth-locked">
@@ -25,12 +195,12 @@
   <!-- Topbar -->
   <header class="topbar">
     <div class="brand">
-      <button id="menuBtn" class="btn ghost menuBtn" type="button">☰</button>
+      <button id="menuBtn" class="btn ghost" style="width:36px;height:36px;padding:0;">☰</button>
       <span>📡 MiniDiscordVoice</span>
     </div>
     <div class="rightRow">
       <div class="pill">
-        <span>PING</span> <b id="pingVal" class="mono pingVal">--</b> <span class="mono">ms</span>
+        <span>PING</span> <b id="pingVal" class="mono" style="color:var(--accent)">--</b> <span class="mono">ms</span>
       </div>
       <div class="pill">
         <span>NET</span>
@@ -40,7 +210,7 @@
       </div>
       <div class="pill" title="الحساب">
         <span class="mono">USER</span>
-        <span id="topUserEmail" class="topUserEmail">—</span>
+        <span id="topUserEmail" style="max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
       </div>
     </div>
   </header>
@@ -48,12 +218,12 @@
   <div class="app-body">
     <!-- Sidebar -->
     <nav id="drawer" class="drawer">
-      <button class="tabBtn active" data-target="pageCall" type="button"><span class="tabIco">📞</span><span class="tabTxt">المكالمة</span></button>
-      <button class="tabBtn" data-target="pageFriends" type="button"><span class="tabIco">👥</span><span class="tabTxt">الأصدقاء</span></button>
-      <button class="tabBtn" data-target="pageDiag" type="button"><span class="tabIco">🧪</span><span class="tabTxt">التشخيص</span></button>
-      <button class="tabBtn" data-target="pageSettings" type="button"><span class="tabIco">⚙️</span><span class="tabTxt">الإعدادات</span></button>
-      <div class="drawerSpacer"></div>
-      <button id="btnLogout" class="tabBtn tabDanger" type="button"><span class="tabIco">🚪</span><span class="tabTxt">خروج</span></button>
+      <button class="tabBtn active" data-target="pageCall"><span class="tabIco">📞</span><span class="tabTxt">المكالمة</span></button>
+      <button class="tabBtn" data-target="pageFriends"><span class="tabIco">👥</span><span class="tabTxt">الأصدقاء</span></button>
+      <button class="tabBtn" data-target="pageDiag"><span class="tabIco">🧪</span><span class="tabTxt">التشخيص</span></button>
+      <button class="tabBtn" data-target="pageSettings"><span class="tabIco">⚙️</span><span class="tabTxt">الإعدادات</span></button>
+      <div style="flex:1"></div>
+      <button id="btnLogout" class="tabBtn" style="color:var(--danger)"><span class="tabIco">🚪</span><span class="tabTxt">خروج</span></button>
     </nav>
     <div id="drawerOverlay" class="drawerOverlay"></div>
 
@@ -63,48 +233,44 @@
       <!-- PAGE: CALL -->
       <div id="pageCall" class="page active">
         <div class="ledStrip">
-          <div class="ledGroup">
+          <div style="display:flex;gap:8px">
             <div id="ledPwr" class="led on" title="Power"></div>
             <div id="ledNet" class="led" title="Internet"></div>
             <div id="ledAgora" class="led" title="Voice Cloud"></div>
           </div>
-          <div class="ledGroup">
+          <div style="display:flex;gap:8px">
             <div id="ledMic" class="led mic" title="Mic Active"></div>
             <div id="ledRec" class="led rec" title="Receiving"></div>
           </div>
         </div>
 
         <div class="screen">
-          <div class="screenTL mono">CH: <span id="scrCh">--</span></div>
-          <div class="screenTR" id="scrStat">READY</div>
-
+          <div style="position:absolute;top:10px;left:10px;font-size:10px;color:#aaa;z-index:6" class="mono">CH: <span id="scrCh">--</span></div>
+          <div style="position:absolute;top:10px;right:10px;font-size:10px;color:#aaa;z-index:6" id="scrStat">READY</div>
           <canvas id="waveCanvas"></canvas>
-
-          <div class="screenCenter">
-            <div id="mainStatus" class="mainStatus">STANDBY</div>
-            <div id="callTimer" class="mono callTimer">00:00:00</div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:6">
+            <div id="mainStatus" style="font-size:24px;font-weight:900;color:#fff;text-shadow:0 0 10px rgba(255,255,255,0.2)">STANDBY</div>
+            <div id="callTimer" class="mono" style="margin-top:5px;color:var(--accent)">00:00:00</div>
           </div>
         </div>
 
         <div class="controls">
           <div class="card">
-            <label class="secLabel">SECURE CHANNEL ID</label>
-            <input id="channel" value="7788" placeholder="Enter Channel" class="channelInput">
-
-            <div class="btnRow mt15">
-              <button id="joinBtn" class="btn primary" type="button">⚡ تشغيل</button>
-              <button id="leaveBtn" class="btn danger" type="button" disabled>🛑 خروج</button>
+            <label style="font-size:11px;color:#aaa;font-weight:bold">SECURE CHANNEL ID</label>
+            <input id="channel" value="7788" placeholder="Enter Channel" style="margin-top:5px;font-family:monospace;letter-spacing:2px;font-weight:bold;text-align:center">
+            <div class="btnRow" style="margin-top:15px">
+              <button id="joinBtn" class="btn primary">⚡ تشغيل</button>
+              <button id="leaveBtn" class="btn danger" disabled>🛑 خروج</button>
+            </div>
+            <div class="btnRow" style="margin-top:10px">
+              <button id="spkBtn" class="btn ghost">🔊 سبيكر</button>
+              <button id="muteBtn" class="btn ghost" disabled>🎙️ المايك</button>
             </div>
 
-            <div class="btnRow mt10">
-              <button id="spkBtn" class="btn ghost" type="button">🔊 سبيكر</button>
-              <button id="muteBtn" class="btn ghost" type="button" disabled>🎙️ المايك</button>
-            </div>
-
-            <div class="fm-panel mt20">
+            <div class="fm-panel" style="margin-top:20px">
               <div>
-                <div class="fmTitle">⚠️ القوة القاهرة</div>
-                <div class="fmSub">نظام السحب التلقائي (2 دقيقة)</div>
+                <div style="color:var(--warn);font-weight:bold;font-size:13px">⚠️ القوة القاهرة</div>
+                <div style="font-size:10px;color:#aaa">نظام السحب التلقائي (2 دقيقة)</div>
               </div>
               <label class="switch">
                 <input id="fmSwitch" type="checkbox">
@@ -112,9 +278,9 @@
               </label>
             </div>
 
-            <div class="btnRow mt20">
-              <button id="videoAdBtn" class="btn goldDashed" type="button">💎 فيديو دعم</button>
-              <button id="copyBtn" class="btn ghost" type="button">🔗 نسخ القناة</button>
+            <div class="btnRow" style="margin-top:20px">
+              <button id="videoAdBtn" class="btn" style="background:#222;border:1px dashed var(--gold);color:var(--gold)">💎 فيديو دعم</button>
+              <button id="copyBtn" class="btn ghost">🔗 نسخ القناة</button>
             </div>
           </div>
         </div>
@@ -123,14 +289,12 @@
       <!-- PAGE: FRIENDS -->
       <div id="pageFriends" class="page">
         <div class="card">
-          <h3 class="hTitle">الأصدقاء</h3>
-
-          <div class="friendsTop">
-            <input id="friendInput" placeholder="بحث بالاسم أو البريد" class="friendInput">
-            <button id="friendSearchBtn" class="btn primary friendSearchBtn" type="button">بحث</button>
+          <h3 style="margin:0 0 15px;color:var(--text)">الأصدقاء</h3>
+          <div style="display:flex;gap:10px;margin-bottom:15px">
+            <input id="friendInput" placeholder="بحث بالاسم أو البريد" style="height:40px">
+            <button id="friendSearchBtn" class="btn primary" style="flex:0 0 60px;height:40px">بحث</button>
           </div>
-
-          <div id="friendsList" class="friendsList">
+          <div id="friendsList" style="min-height:150px;background:#000;border-radius:12px;padding:10px;font-size:12px;color:#aaa">
             جاري التحميل...
           </div>
         </div>
@@ -139,27 +303,27 @@
       <!-- PAGE: SETTINGS -->
       <div id="pageSettings" class="page">
         <div class="card">
-          <h3 class="hTitle">الإعدادات</h3>
+          <h3 style="margin:0 0 15px;color:var(--text)">الإعدادات</h3>
 
-          <div class="field">
-            <label class="fieldLbl">اسم المستخدم</label>
-            <input id="displayName" class="fieldInp">
+          <div style="margin-bottom:15px">
+            <label style="font-size:12px;color:#aaa">اسم المستخدم</label>
+            <input id="displayName" style="margin-top:5px;height:40px">
           </div>
 
-          <div class="accountBox">
-            <div class="accountLbl">حساب Google</div>
-            <div id="userEmail" class="accountEmail">—</div>
+          <div style="margin-bottom:15px;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">
+            <div style="font-size:12px;color:#aaa">حساب Google</div>
+            <div id="userEmail" style="font-weight:bold;margin-top:2px">—</div>
 
-            <div class="btnRow mt10">
-              <button id="loginBtn" class="btn primary tiny" type="button">تسجيل الدخول</button>
-              <button id="logoutBtn2" class="btn danger tiny" type="button">تسجيل الخروج</button>
+            <div class="btnRow" style="margin-top:10px">
+              <button id="loginBtn" class="btn primary tiny">تسجيل الدخول</button>
+              <button id="logoutBtn2" class="btn danger tiny">تسجيل الخروج</button>
             </div>
           </div>
 
-          <label class="advLbl">خيارات متقدمة</label>
-          <div class="btnRow mt5">
-            <button class="btn ghost" type="button" data-soon="1">مسح الكاش</button>
-            <button class="btn ghost" type="button" data-soon="1">حول التطبيق</button>
+          <label style="font-size:12px;color:#aaa;display:block;margin-top:20px">خيارات متقدمة</label>
+          <div class="btnRow" style="margin-top:5px">
+            <button class="btn ghost" onclick="alert('قريباً')">مسح الكاش</button>
+            <button class="btn ghost" onclick="alert('قريباً')">حول التطبيق</button>
           </div>
         </div>
       </div>
@@ -167,8 +331,8 @@
       <!-- PAGE: DIAGNOSTICS -->
       <div id="pageDiag" class="page">
         <div class="card">
-          <h3 class="hTitle">التشخيص (Diagnostics)</h3>
-          <div class="diag">
+          <h3 style="margin:0 0 15px;color:var(--text)">التشخيص (Diagnostics)</h3>
+          <div style="font-family:monospace;font-size:11px;color:#aaa;line-height:1.6">
             <div>> APP_VERSION: V5.0</div>
             <div>> AGORA_SDK: DETECTED</div>
             <div>> FIREBASE: <span id="diagFbStatus">CHECKING...</span></div>
@@ -185,19 +349,19 @@
   <!-- Overlays -->
   <div id="rebootOverlay" class="overlay">
     <div class="modal">
-      <h2 class="rebootTitle">REBOOTING...</h2>
-      <div id="rebootCount" class="rebootCount">6</div>
-      <div class="rebootSub">يتم إعادة الاتصال تلقائياً</div>
+      <h2 style="color:var(--warn);margin:0">REBOOTING...</h2>
+      <div id="rebootCount" style="font-size:60px;font-weight:900;color:#fff;margin:20px 0">6</div>
+      <div style="font-size:12px;color:#aaa">يتم إعادة الاتصال تلقائياً</div>
     </div>
   </div>
 
   <div id="incomingOverlay" class="overlay">
     <div class="modal">
-      <h3 class="incomingTitle">📞 مكالمة واردة</h3>
-      <p id="incomingFrom" class="incomingFrom">...</p>
+      <h3 style="color:var(--primary)">📞 مكالمة واردة</h3>
+      <p id="incomingFrom" style="color:#fff;font-size:16px;margin:15px 0">...</p>
       <div class="btnRow">
-        <button id="acceptBtn" class="btn primary" type="button">قبول</button>
-        <button id="rejectBtn" class="btn danger" type="button">رفض</button>
+        <button id="acceptBtn" class="btn primary">قبول</button>
+        <button id="rejectBtn" class="btn danger">رفض</button>
       </div>
     </div>
   </div>
@@ -214,11 +378,11 @@
       </div>
 
       <div class="btnRow">
-        <button id="authLoginBtn" class="btn primary" type="button">🔵 تسجيل الدخول بجوجل</button>
-        <button id="authReloadBtn" class="btn ghost" type="button">🔄 تحديث</button>
+        <button id="authLoginBtn" class="btn primary">🔵 تسجيل الدخول بجوجل</button>
+        <button id="authReloadBtn" class="btn ghost">🔄 تحديث</button>
       </div>
 
-      <div id="authEmail" class="authEmail"></div>
+      <div id="authEmail" style="margin-top:12px;color:#cfe;font-size:12px;opacity:.9"></div>
       <div id="authErr" class="authErr"></div>
     </div>
   </div>
@@ -227,5 +391,398 @@
   <input id="presenceRoom" type="hidden" value="call_room1">
   <input id="token" type="hidden">
 
+  <script>
+  window.addEventListener('load', function() {
+    // ✅ Firebase config (كما أرسلته)
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyApUvLTt0OLAc_3Rk2e1BnmvX64T5RTmA8",
+      authDomain: "minidiscordvoice-b7310.firebaseapp.com",
+      databaseURL: "https://minidiscordvoice-b7310-default-rtdb.firebaseio.com",
+      projectId: "minidiscordvoice-b7310",
+      storageBucket: "minidiscordvoice-b7310.firebasestorage.app",
+      messagingSenderId: "1073341648468",
+      appId: "1:1073341648468:web:9af59b1fcc577d4468e7c1",
+      measurementId: "G-7R4MRJHWY6"
+    };
+
+    const APP_ID = "eb80a41c4a3c400f865a5c88bdf293be"; // Agora
+    const FM_INTERVAL = 120000;
+
+    const $ = (id) => document.getElementById(id);
+    const uiGate = {
+      gate: $("authGate"),
+      login: $("authLoginBtn"),
+      reload: $("authReloadBtn"),
+      err: $("authErr"),
+      email: $("authEmail"),
+      diagFb: $("diagFbStatus"),
+      topEmail: $("topUserEmail"),
+      setEmail: $("userEmail"),
+      loginBtn: $("loginBtn"),
+      logoutBtn2: $("logoutBtn2"),
+      btnLogout: $("btnLogout"),
+    };
+
+    function setGateError(msg){
+      if(uiGate.err) uiGate.err.textContent = msg || "";
+    }
+
+    // 1) INIT FIREBASE AUTH
+    let auth = null;
+    let provider = null;
+    let appStarted = false;
+
+    function initFirebase(){
+      try{
+        if(!firebase.apps.length){
+          firebase.initializeApp(FIREBASE_CONFIG);
+        }
+        auth = firebase.auth();
+        provider = new firebase.auth.GoogleAuthProvider();
+        auth.useDeviceLanguage();
+        uiGate.diagFb && (uiGate.diagFb.textContent = "OK");
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
+      }catch(e){
+        uiGate.diagFb && (uiGate.diagFb.textContent = "CONFIG ERROR");
+        setGateError("Firebase CONFIG غير صحيح أو لم يتم تحميل Firebase.");
+        console.error(e);
+      }
+    }
+
+    function lockUI(){
+      document.body.classList.add("auth-locked");
+      if(uiGate.gate) uiGate.gate.classList.add("show");
+      if(uiGate.topEmail) uiGate.topEmail.textContent = "—";
+      if(uiGate.setEmail) uiGate.setEmail.textContent = "—";
+    }
+
+    function unlockUI(user){
+      document.body.classList.remove("auth-locked");
+      if(uiGate.gate) uiGate.gate.classList.remove("show");
+
+      const email = (user && user.email) ? user.email : "";
+      const name  = (user && user.displayName) ? user.displayName : "";
+
+      if(uiGate.topEmail) uiGate.topEmail.textContent = email || (name || "OK");
+      if(uiGate.setEmail) uiGate.setEmail.textContent = email || (name || "OK");
+      if(uiGate.email) uiGate.email.textContent = email ? ("✅ " + email) : "";
+      if($("displayName") && name) $("displayName").value = name;
+
+      setGateError("");
+    }
+
+    async function signInGoogle(){
+      if(!auth || !provider){
+        setGateError("Firebase غير جاهز.");
+        return;
+      }
+      setGateError("");
+      try{
+        await auth.signInWithRedirect(provider);
+      }catch(e){
+        try{
+          await auth.signInWithPopup(provider);
+        }catch(e2){
+          setGateError("فشل تسجيل الدخول: " + (e2 && e2.message ? e2.message : e2));
+        }
+      }
+    }
+
+    async function handleRedirectResult(){
+      if(!auth) return;
+      try{
+        await auth.getRedirectResult();
+      }catch(e){
+        setGateError("Redirect Error: " + (e && e.message ? e.message : e));
+      }
+    }
+
+    function requireAuthOrLock(){
+      if(!auth || !auth.currentUser){
+        lockUI();
+        return false;
+      }
+      return true;
+    }
+
+    // 2) APP LOGIC — guarded by auth
+    const loadScript = (src) => new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => resolve(true);
+      s.onerror = () => resolve(false);
+      document.head.appendChild(s);
+    });
+
+    async function ensureAgora() {
+      if (typeof AgoraRTC !== 'undefined') return true;
+      return await loadScript("https://unpkg.com/agora-rtc-sdk-ng@4.20.2/AgoraRTC_N.js");
+    }
+
+    function startAppOnce(){
+      if(appStarted) return;
+      appStarted = true;
+
+      ensureAgora().then((loaded) => {
+        if (!loaded) {
+          $("mainStatus").innerText = "LIB ERROR";
+          return;
+        }
+        initApp();
+      });
+    }
+
+    function initApp() {
+      const ui = {
+        scrCh: $('scrCh'), scrStat: $('scrStat'), mainStat: $('mainStatus'),
+        timer: $('callTimer'), ping: $('pingVal'), net: $('netTower'),
+        join: $('joinBtn'), leave: $('leaveBtn'), mute: $('muteBtn'), spk: $('spkBtn'),
+        fm: $('fmSwitch'), vid: $('videoAdBtn'),
+        reboot: $('rebootOverlay'), rCount: $('rebootCount'),
+        incoming: $('incomingOverlay'), incFrom: $('incomingFrom'),
+        acc: $('acceptBtn'), rej: $('rejectBtn'),
+        menu: $('menuBtn'), drawer: $('drawer'), overlay: $('drawerOverlay'),
+        tabs: document.querySelectorAll('.tabBtn[data-target]'),
+        pages: document.querySelectorAll('.page')
+      };
+
+      // NAVIGATION
+      if(ui.menu) ui.menu.onclick = () => { ui.drawer.classList.toggle('open'); };
+      if(ui.overlay) ui.overlay.onclick = () => { ui.drawer.classList.remove('open'); };
+
+      ui.tabs.forEach(btn => {
+        btn.onclick = () => {
+          ui.tabs.forEach(b => b.classList.remove('active'));
+          ui.pages.forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          const target = $(btn.dataset.target);
+          if(target) target.classList.add('active');
+          ui.drawer.classList.remove('open');
+        };
+      });
+
+      // STATE
+      let client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+      let localTracks = { audio: null };
+      let state = { joined: false, muted: false, speaker: true, remote: false };
+      let timerInt, fmTimer;
+
+      // Visualizer
+      let animId;
+      function startVisualizer(isActive) {
+        const canvas = $('waveCanvas');
+        if(!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = 300, h = 150;
+        canvas.width = w; canvas.height = h;
+
+        function draw() {
+          ctx.clearRect(0,0,w,h);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = isActive ? (state.remote ? '#21d07a' : '#9b7aff') : '#333';
+          ctx.beginPath();
+          const t = Date.now();
+          for(let x=0; x<w; x+=5) {
+            const y = h/2 + Math.sin(x*0.05 + t*0.01) * (isActive?20:2);
+            if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+          }
+          ctx.stroke();
+          animId = requestAnimationFrame(draw);
+        }
+        if(animId) cancelAnimationFrame(animId);
+        draw();
+      }
+      startVisualizer(false);
+
+      // AGORA EVENTS
+      client.on("user-published", async (user, mediaType) => {
+        await client.subscribe(user, mediaType);
+        if (mediaType === "audio") {
+          user.audioTrack.play();
+          ui.mainStat.innerText = "RECEIVING";
+          ui.mainStat.style.color = "#21d07a";
+          state.remote = true;
+          const ledRec = $('ledRec'); if(ledRec) ledRec.classList.add('on');
+          startVisualizer(true);
+        }
+      });
+      client.on("user-unpublished", () => {
+        state.remote = false;
+        ui.mainStat.innerText = "CONNECTED";
+        ui.mainStat.style.color = "#9b7aff";
+        const ledRec = $('ledRec'); if(ledRec) ledRec.classList.remove('on');
+        startVisualizer(true);
+      });
+
+      // JOIN (guarded)
+      if(ui.join) ui.join.onclick = async () => {
+        if(!requireAuthOrLock()){
+          setGateError("لازم تسجل دخول أولاً.");
+          return;
+        }
+        const ch = $('channel').value;
+        if(!ch) return alert("Enter Channel");
+
+        try{
+          ui.mainStat.innerText = "CONNECTING...";
+          ui.join.disabled = true;
+
+          await client.join(APP_ID, ch, null, null);
+          localTracks.audio = await AgoraRTC.createMicrophoneAudioTrack();
+          await client.publish([localTracks.audio]);
+
+          state.joined = true;
+          ui.scrCh.innerText = ch;
+          ui.scrStat.innerText = "ONLINE"; ui.scrStat.style.color = "#21d07a";
+          ui.mainStat.innerText = "CONNECTED"; ui.mainStat.style.color = "#9b7aff";
+
+          ui.join.disabled = true; ui.leave.disabled = false; ui.mute.disabled = false;
+          const ledNet = $('ledNet'); if(ledNet) ledNet.classList.add('on');
+          const ledMic = $('ledMic'); if(ledMic) ledMic.classList.add('on');
+
+          startTimer();
+          startVisualizer(true);
+          if(ui.fm.checked) startFM();
+
+        }catch(e){
+          console.error(e);
+          ui.mainStat.innerText = "ERROR";
+          ui.mainStat.style.color = "red";
+          ui.join.disabled = false;
+        }
+      };
+
+      // LEAVE
+      if(ui.leave) ui.leave.onclick = async () => {
+        stopFM();
+        try{
+          if(localTracks.audio){ localTracks.audio.close(); localTracks.audio=null; }
+          await client.leave();
+
+          state.joined = false;
+          ui.join.disabled = false; ui.leave.disabled = true; ui.mute.disabled = true;
+          ui.mainStat.innerText = "STANDBY"; ui.mainStat.style.color = "#fff";
+          ui.scrStat.innerText = "OFFLINE"; ui.scrStat.style.color = "#888";
+          ui.scrCh.innerText = "--";
+
+          const ledNet = $('ledNet'); if(ledNet) ledNet.classList.remove('on');
+          const ledMic = $('ledMic'); if(ledMic) ledMic.classList.remove('on');
+          const ledRec = $('ledRec'); if(ledRec) ledRec.classList.remove('on');
+
+          stopTimer();
+          startVisualizer(false);
+        }catch(e){ console.error(e); }
+      };
+
+      // CONTROLS
+      if(ui.mute) ui.mute.onclick = () => {
+        if(!requireAuthOrLock()) return;
+        if(!localTracks.audio) return;
+        state.muted = !state.muted;
+        localTracks.audio.setMuted(state.muted);
+        ui.mute.innerText = state.muted ? "🔇 كتم" : "🎙️ المايك";
+        const ledMic = $('ledMic');
+        if(ledMic) ledMic.classList.toggle('on', !state.muted);
+      };
+
+      if(ui.spk) ui.spk.onclick = () => {
+        if(!requireAuthOrLock()) return;
+        state.speaker = !state.speaker;
+        ui.spk.innerText = state.speaker ? "🔊 سبيكر" : "👂 سماعة";
+      };
+
+      // FORCE MAJEURE (2 minutes)
+      function startFM() {
+        if(fmTimer) clearTimeout(fmTimer);
+        fmTimer = setTimeout(async () => {
+          if(!state.joined) return;
+          await ui.leave.click();
+
+          if(ui.reboot){
+            ui.reboot.classList.add('show');
+            let c = 6;
+            ui.rCount.innerText = c;
+            let cd = setInterval(() => {
+              c--; ui.rCount.innerText = c;
+              if(c <= 0){
+                clearInterval(cd);
+                ui.reboot.classList.remove('show');
+                if(ui.fm.checked) ui.join.click();
+              }
+            }, 1000);
+          }
+        }, FM_INTERVAL);
+      }
+      function stopFM(){ if(fmTimer) clearTimeout(fmTimer); }
+      if(ui.fm) ui.fm.onchange = () => { if(ui.fm.checked && state.joined) startFM(); else stopFM(); };
+
+      // UTIL: Timer
+      function startTimer(){
+        let s=0;
+        if(timerInt) clearInterval(timerInt);
+        timerInt = setInterval(() => {
+          s++;
+          const date = new Date(s*1000);
+          ui.timer.innerText = date.toISOString().substr(11,8);
+        }, 1000);
+      }
+      function stopTimer(){ clearInterval(timerInt); ui.timer.innerText = "00:00:00"; }
+
+      // Copy
+      const copyBtn = $("copyBtn");
+      if(copyBtn) copyBtn.onclick = () => {
+        if(!requireAuthOrLock()) return;
+        const ch = $("channel").value || "";
+        const txt = "Channel: " + ch;
+        try{ navigator.clipboard.writeText(txt); }catch(_){}
+      };
+
+      // Fake ping loop
+      setInterval(() => {
+        const p = Math.floor(Math.random() * 50) + 20;
+        ui.ping.innerText = p;
+        const bars = document.querySelectorAll('.bar');
+        bars.forEach(b => b.classList.remove('on'));
+        if(p < 100) bars.forEach(b => b.classList.add('on'));
+      }, 2000);
+    }
+
+    // 3) HOOK BUTTONS
+    if(uiGate.reload) uiGate.reload.onclick = () => location.reload();
+    if(uiGate.login)  uiGate.login.onclick  = () => signInGoogle();
+    if(uiGate.loginBtn) uiGate.loginBtn.onclick = () => signInGoogle();
+
+    function doSignOut(){
+      if(!auth) return location.reload();
+      auth.signOut().then(() => {
+        lockUI();
+        location.reload();
+      }).catch(() => {
+        lockUI();
+        location.reload();
+      });
+    }
+    if(uiGate.btnLogout) uiGate.btnLogout.onclick = doSignOut;
+    if(uiGate.logoutBtn2) uiGate.logoutBtn2.onclick = doSignOut;
+
+    // 4) BOOT
+    initFirebase();
+    handleRedirectResult().then(() => {
+      if(!auth){
+        lockUI();
+        return;
+      }
+      auth.onAuthStateChanged((user) => {
+        if(user){
+          unlockUI(user);
+          startAppOnce();
+        }else{
+          lockUI();
+        }
+      });
+    });
+
+  });
+  </script>
 </body>
 </html>
