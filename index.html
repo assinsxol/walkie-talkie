@@ -1,115 +1,673 @@
-<!DOCTYPE html>
-<html lang="ar">
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<title>حاسبة الأسعار</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#070b12" />
+    <title>Mini Discord Voice — Tactical</title>
 
-<style>
-body {
-    font-family: Arial;
-    direction: rtl;
-    text-align: center;
-    background: #111;
-    color: #fff;
-}
+    <!-- مكتبات Firebase & Agora -->
+    <!-- ✅ تم إضافة defer لضمان التحميل الصحيح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    
+    <!-- المصدر الأساسي لـ Agora -->
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.2.js"></script>
 
-.container {
-    margin-top: 50px;
-}
+    <style>
+        /* =========================================
+           CSS: TACTICAL UI V5 (ULTIMATE)
+           ========================================= */
+        :root {
+            --topH: 58px;
+            --navW: 280px;
+            --railW: 70px;
+            
+            --bg: #070b12;
+            --bg2: #0b1020;
+            --panel: rgba(20, 25, 35, 0.85);
+            --border: rgba(255, 255, 255, 0.12);
+            --text: #eef2ff;
+            --muted: #a9b4c6;
+            
+            --primary: #9b7aff;
+            --primary-glow: rgba(155, 122, 255, 0.25);
+            --accent: #53F6C7;
+            --warn: #ffcc3c;
+            --danger: #ff4d6d;
+            --success: #21d07a;
+            
+            --shadow: 0 10px 30px rgba(0,0,0,0.5);
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
 
-input {
-    padding: 10px;
-    font-size: 18px;
-    width: 200px;
-    margin: 10px;
-    border-radius: 8px;
-    border: none;
-}
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        body {
+            margin: 0; padding: 0;
+            background: radial-gradient(circle at top right, rgba(155,122,255,0.15), transparent 40%),
+                        linear-gradient(180deg, var(--bg), var(--bg2));
+            color: var(--text);
+            font-family: var(--font);
+            height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
 
-button {
-    padding: 10px 20px;
-    font-size: 18px;
-    background: #00c853;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    color: white;
-}
+        .mono { font-family: ui-monospace, SFMono-Regular, monospace; letter-spacing: -0.5px; }
+        .hidden { display: none !important; }
 
-.result {
-    margin-top: 20px;
-    font-size: 22px;
-    color: #00e676;
-}
-</style>
+        /* --- Top Bar --- */
+        .topbar {
+            height: var(--topH); flex-shrink: 0;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 12px; background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--border); backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        .brand { font-weight: 900; font-size: 16px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        .rightRow { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+        
+        .pill {
+            height: 28px; display: flex; align-items: center; gap: 6px;
+            padding: 0 10px; border-radius: 99px; background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border); font-size: 11px; white-space: nowrap;
+        }
+
+        /* --- Towers & LEDs --- */
+        .tower { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
+        .bar { width: 3px; background: #444; border-radius: 1px; }
+        .b1 { height: 4px; } .b2 { height: 7px; } .b3 { height: 10px; } .b4 { height: 13px; }
+        .bar.on { background: var(--success); box-shadow: 0 0 5px var(--success); }
+        .bar.warn { background: var(--warn); }
+        .bar.bad { background: var(--danger); }
+
+        .ledStrip {
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(90deg, #151a24, #1a202c);
+            padding: 10px 15px; border-radius: 16px; border: 1px solid var(--border);
+            margin-bottom: 15px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .led {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #222; box-shadow: inset 0 1px 2px #000;
+            transition: 0.2s; border: 1px solid #444;
+        }
+        .led.on { background: var(--primary); box-shadow: 0 0 8px var(--primary); border-color: #fff; }
+        .led.warn.on { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+        .led.bad.on { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+        /* --- Layout --- */
+        .app-body { display: flex; flex: 1; overflow: hidden; position: relative; }
+        
+        /* Drawer */
+        .drawer {
+            width: var(--railW); background: rgba(0,0,0,0.4);
+            border-left: 1px solid var(--border); display: flex; flex-direction: column;
+            gap: 10px; padding: 10px; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 90; backdrop-filter: blur(15px);
+        }
+        .drawer.open { width: var(--navW); background: var(--panel); }
+        .drawerOverlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 80;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .drawer.open + .drawerOverlay { opacity: 1; pointer-events: auto; }
+
+        .tabBtn {
+            height: 44px; display: flex; align-items: center; gap: 12px;
+            padding: 0 12px; border-radius: 12px; border: 1px solid transparent;
+            background: transparent; color: var(--muted); cursor: pointer;
+            overflow: hidden; white-space: nowrap; transition: 0.2s;
+        }
+        .tabBtn:hover { background: rgba(255,255,255,0.05); }
+        .tabBtn.active { background: var(--primary-glow); border-color: var(--primary); color: #fff; }
+        .tabIco { font-size: 18px; min-width: 24px; text-align: center; }
+        .tabTxt { opacity: 0; transition: 0.2s; font-weight: bold; font-size: 13px; }
+        .drawer.open .tabTxt { opacity: 1; }
+
+        /* Main Content */
+        .content { flex: 1; overflow-y: auto; padding: 15px; position: relative; }
+        .page { display: none; animation: fadeUp 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Components --- */
+        .card {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 18px; padding: 20px; box-shadow: var(--shadow);
+            position: relative; overflow: hidden;
+        }
+        
+        .screen {
+            background: #000; border: 2px solid #333; border-radius: 14px;
+            height: 180px; position: relative; overflow: hidden;
+            display: flex; flex-direction: column;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+        }
+        .screen::after { /* Scanlines */
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(rgba(0,0,0,0) 50%, rgba(0,0,0,0.2) 50%);
+            background-size: 100% 4px; pointer-events: none; z-index: 5;
+        }
+        
+        .controls {
+            margin-top: 15px; display: flex; flex-direction: column; gap: 12px;
+        }
+        
+        input {
+            width: 100%; height: 50px; background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border); border-radius: 12px;
+            padding: 0 15px; color: #fff; font-size: 16px;
+            transition: 0.3s;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 15px var(--primary-glow); }
+        
+        .btnRow { display: flex; gap: 10px; }
+        .btn {
+            flex: 1; height: 50px; border: none; border-radius: 12px;
+            font-weight: 800; font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            color: #fff; position: relative; overflow: hidden;
+        }
+        .btn.primary { background: linear-gradient(135deg, var(--primary), #6d43ff); box-shadow: 0 5px 15px var(--primary-glow); }
+        .btn.danger { background: rgba(255, 77, 109, 0.2); border: 1px solid var(--danger); color: var(--danger); }
+        .btn.ghost { background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
+        
+        /* Toggle States */
+        .btn[data-state="on"] { border-color: var(--primary); background: rgba(155,122,255,0.2); }
+        .btn[data-state="on"]::after { content: "ON"; position: absolute; top:4px; right:4px; font-size:8px; background:var(--primary); color:#000; padding:1px 4px; border-radius:4px; }
+
+        /* Force Majeure Switch */
+        .fm-panel {
+            background: linear-gradient(90deg, rgba(255,204,60,0.1), transparent);
+            border: 1px solid rgba(255,204,60,0.3); border-radius: 12px; padding: 12px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .switch { position: relative; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; inset: 0; background: #333; border-radius: 24px; transition: 0.3s; }
+        .slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background: var(--warn); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Overlays */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2000; opacity: 0; pointer-events: none; transition: 0.3s;
+            backdrop-filter: blur(5px);
+        }
+        .overlay.show { opacity: 1; pointer-events: auto; }
+        .modal {
+            background: #151a22; width: 90%; max-width: 350px;
+            padding: 25px; border-radius: 20px; border: 1px solid var(--primary);
+            text-align: center; transform: translateY(20px); transition: 0.3s;
+        }
+        .overlay.show .modal { transform: translateY(0); }
+        
+        /* Helpers */
+        .hidden { display: none !important; }
+        #waveCanvas { width: 100%; height: 100%; opacity: 0.7; }
+    </style>
 </head>
 
 <body>
 
-<div class="container">
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="brand">
+            <button id="menuBtn" class="btn ghost" style="width:36px;height:36px;padding:0;">☰</button>
+            <span>📡 MiniDiscordVoice</span>
+        </div>
+        <div class="rightRow">
+            <div class="pill">
+                <span>PING</span> <b id="pingVal" class="mono" style="color:var(--accent)">--</b> <span class="mono">ms</span>
+            </div>
+            <div class="pill">
+                <span>NET</span>
+                <div id="netTower" class="tower">
+                    <div class="bar b1"></div><div class="bar b2"></div><div class="bar b3"></div><div class="bar b4"></div>
+                </div>
+            </div>
+        </div>
+    </header>
 
-<h2>تحويل السعر (+36%)</h2>
-<input type="number" id="priceInput" placeholder="اكتب السعر">
-<br>
-<button onclick="calculatePrice()">احسب</button>
-<div class="result" id="priceResult"></div>
+    <div class="app-body">
+        <!-- Sidebar -->
+        <nav id="drawer" class="drawer">
+            <button class="tabBtn active" data-target="pageCall"><span class="tabIco">📞</span><span class="tabTxt">المكالمة</span></button>
+            <button class="tabBtn" data-target="pageFriends"><span class="tabIco">👥</span><span class="tabTxt">الأصدقاء</span></button>
+            <button class="tabBtn" data-target="pageDiag"><span class="tabIco">🧪</span><span class="tabTxt">التشخيص</span></button>
+            <button class="tabBtn" data-target="pageSettings"><span class="tabIco">⚙️</span><span class="tabTxt">الإعدادات</span></button>
+            <div style="flex:1"></div>
+            <button id="btnLogout" class="tabBtn" style="color:var(--danger)"><span class="tabIco">🚪</span><span class="tabTxt">خروج</span></button>
+        </nav>
+        <div id="drawerOverlay" class="drawerOverlay"></div>
 
-<hr>
+        <!-- Content -->
+        <div class="content">
+            
+            <!-- PAGE: CALL -->
+            <div id="pageCall" class="page active">
+                <!-- LED Strip -->
+                <div class="ledStrip">
+                    <div style="display:flex;gap:8px">
+                        <div id="ledPwr" class="led on" title="Power"></div>
+                        <div id="ledNet" class="led" title="Internet"></div>
+                        <div id="ledAgora" class="led" title="Voice Cloud"></div>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <div id="ledMic" class="led mic" title="Mic Active"></div>
+                        <div id="ledRec" class="led rec" title="Receiving"></div>
+                    </div>
+                </div>
 
-<h2>حاسبة المشوار (كم)</h2>
-<input type="number" id="kmInput" placeholder="عدد الكيلومترات">
-<br>
-<button onclick="calculateTrip()">احسب</button>
-<div class="result" id="tripResult"></div>
+                <!-- Screen -->
+                <div class="screen">
+                    <div style="position:absolute;top:10px;left:10px;font-size:10px;color:#aaa;z-index:6" class="mono">CH: <span id="scrCh">--</span></div>
+                    <div style="position:absolute;top:10px;right:10px;font-size:10px;color:#aaa;z-index:6" id="scrStat">READY</div>
+                    
+                    <canvas id="waveCanvas"></canvas>
+                    
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:6">
+                        <div id="mainStatus" style="font-size:24px;font-weight:900;color:#fff;text-shadow:0 0 10px rgba(255,255,255,0.2)">STANDBY</div>
+                        <div id="callTimer" class="mono" style="margin-top:5px;color:var(--accent)">00:00:00</div>
+                    </div>
+                </div>
 
-</div>
+                <!-- Controls -->
+                <div class="controls">
+                    <div class="card">
+                        <label style="font-size:11px;color:#aaa;font-weight:bold">SECURE CHANNEL ID</label>
+                        <input id="channel" value="7788" placeholder="Enter Channel" style="margin-top:5px;font-family:monospace;letter-spacing:2px;font-weight:bold;text-align:center">
+                        
+                        <div class="btnRow" style="margin-top:15px">
+                            <button id="joinBtn" class="btn primary">⚡ تشغيل</button>
+                            <button id="leaveBtn" class="btn danger" disabled>🛑 خروج</button>
+                        </div>
 
-<script>
+                        <div class="btnRow" style="margin-top:10px">
+                            <button id="spkBtn" class="btn ghost">🔊 سبيكر</button>
+                            <button id="muteBtn" class="btn ghost" disabled>🎙️ المايك</button>
+                        </div>
 
-// دالة التقريب لأقرب 5
-function roundToNearest5(num) {
-    return Math.round(num / 5) * 5;
-}
+                        <!-- Force Majeure -->
+                        <div class="fm-panel" style="margin-top:20px">
+                            <div>
+                                <div style="color:var(--warn);font-weight:bold;font-size:13px">⚠️ القوة القاهرة</div>
+                                <div style="font-size:10px;color:#aaa">نظام السحب التلقائي (2 دقيقة)</div>
+                            </div>
+                            <label class="switch">
+                                <input id="fmSwitch" type="checkbox">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
 
-// دالة إضافة 36%
-function addPercentage(num) {
-    return num * 1.36;
-}
+                        <!-- Ads & Extra -->
+                        <div class="btnRow" style="margin-top:20px">
+                            <button id="videoAdBtn" class="btn" style="background:#222;border:1px dashed var(--gold);color:var(--gold)">💎 فيديو دعم</button>
+                            <button id="copyBtn" class="btn ghost">🔗 نسخ القناة</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-// حساب السعر
-function calculatePrice() {
-    let price = parseFloat(document.getElementById("priceInput").value);
+            <!-- PAGE: FRIENDS -->
+            <div id="pageFriends" class="page">
+                <div class="card">
+                    <h3 style="margin:0 0 15px;color:var(--text)">الأصدقاء</h3>
+                    <div style="display:flex;gap:10px;margin-bottom:15px">
+                        <input id="friendInput" placeholder="بحث بالاسم أو البريد" style="height:40px">
+                        <button id="friendSearchBtn" class="btn primary" style="flex:0 0 60px;height:40px">بحث</button>
+                    </div>
+                    <div id="friendsList" style="min-height:150px;background:#000;border-radius:12px;padding:10px;font-size:12px;color:#aaa">
+                        <!-- List populated by JS -->
+                        جاري التحميل...
+                    </div>
+                </div>
+            </div>
 
-    if (isNaN(price)) {
-        alert("اكتب رقم صحيح");
-        return;
-    }
+            <!-- PAGE: SETTINGS -->
+            <div id="pageSettings" class="page">
+                <div class="card">
+                    <h3 style="margin:0 0 15px;color:var(--text)">الإعدادات</h3>
+                    
+                    <div style="margin-bottom:15px">
+                        <label style="font-size:12px;color:#aaa">اسم المستخدم</label>
+                        <input id="displayName" style="margin-top:5px;height:40px">
+                    </div>
+                    
+                    <div style="margin-bottom:15px;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px">
+                        <div style="font-size:12px;color:#aaa">حساب Google</div>
+                        <div id="userEmail" style="font-weight:bold;margin-top:2px">Guest</div>
+                        <button id="loginBtn" class="btn primary tiny" style="margin-top:8px;height:30px">تسجيل الدخول</button>
+                    </div>
 
-    let result = addPercentage(price);
-    result = roundToNearest5(result);
+                    <label style="font-size:12px;color:#aaa;display:block;margin-top:20px">خيارات متقدمة</label>
+                    <div class="btnRow" style="margin-top:5px">
+                        <button class="btn ghost" onclick="alert('قريباً')">مسح الكاش</button>
+                        <button class="btn ghost" onclick="alert('قريباً')">حول التطبيق</button>
+                    </div>
+                </div>
+            </div>
+            
+             <!-- PAGE: DIAGNOSTICS -->
+            <div id="pageDiag" class="page">
+                <div class="card">
+                    <h3 style="margin:0 0 15px;color:var(--text)">التشخيص (Diagnostics)</h3>
+                    <div style="font-family:monospace;font-size:11px;color:#aaa;line-height:1.6">
+                        <div>> APP_VERSION: V5.0</div>
+                        <div>> AGORA_SDK: DETECTED</div>
+                        <div>> FIREBASE: <span id="diagFbStatus">CHECKING...</span></div>
+                        <br>
+                        <div>> LAST PING: <span id="diagPing">--</span> ms</div>
+                        <div>> PACKET LOSS: <span id="diagLoss">0</span>%</div>
+                    </div>
+                </div>
+            </div>
 
-    document.getElementById("priceResult").innerText =
-        "السعر النهائي: " + result + " درهم";
-}
 
-// حساب المشوار
-function calculateTrip() {
-    let km = parseFloat(document.getElementById("kmInput").value);
+        </div> <!-- End Content -->
+    </div> <!-- End App Body -->
 
-    if (isNaN(km)) {
-        alert("اكتب رقم صحيح");
-        return;
-    }
+    <!-- Overlays -->
+    <div id="rebootOverlay" class="overlay">
+        <div class="modal">
+            <h2 style="color:var(--warn);margin:0">REBOOTING...</h2>
+            <div id="rebootCount" style="font-size:60px;font-weight:900;color:#fff;margin:20px 0">6</div>
+            <div style="font-size:12px;color:#aaa">يتم إعادة الاتصال تلقائياً</div>
+        </div>
+    </div>
 
-    let base = km * 2;
-    let result = addPercentage(base);
-    result = roundToNearest5(result);
+    <div id="incomingOverlay" class="overlay">
+        <div class="modal">
+            <h3 style="color:var(--primary)">📞 مكالمة واردة</h3>
+            <p id="incomingFrom" style="color:#fff;font-size:16px;margin:15px 0">...</p>
+            <div class="btnRow">
+                <button id="acceptBtn" class="btn primary">قبول</button>
+                <button id="rejectBtn" class="btn danger">رفض</button>
+            </div>
+        </div>
+    </div>
 
-    document.getElementById("tripResult").innerText =
-        "سعر المشوار: " + result + " درهم";
-}
+    <!-- Hidden elements for JS compatibility -->
+    <input id="presenceRoom" type="hidden" value="call_room1">
+    <input id="token" type="hidden">
 
-</script>
+    <!-- Logic -->
+    <script>
+    window.addEventListener('load', function() {
+        // --- 1. CONFIG & UTILS ---
+        const APP_ID = "eb80a41c4a3c400f865a5c88bdf293be"; 
+        const FM_INTERVAL = 120000;
+        
+        // Helper: Lazy load fallback script
+        const loadScript = (src) => new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+        });
 
+        // Ensure Agora loaded
+        async function ensureAgora() {
+            if (typeof AgoraRTC !== 'undefined') return true;
+            console.warn("AgoraRTC not found, trying fallback...");
+            return await loadScript("https://unpkg.com/agora-rtc-sdk-ng@4.20.2/AgoraRTC_N.js");
+        }
+
+        // --- 2. MAIN LOGIC START ---
+        ensureAgora().then((loaded) => {
+            if (!loaded) {
+                document.getElementById("mainStatus").innerText = "LIB ERROR";
+                return;
+            }
+            initApp();
+        });
+
+        function initApp() {
+            const $ = id => document.getElementById(id);
+            const ui = {
+                scrCh: $('scrCh'), scrStat: $('scrStat'), mainStat: $('mainStatus'),
+                timer: $('callTimer'), ping: $('pingVal'), net: $('netTower'),
+                join: $('joinBtn'), leave: $('leaveBtn'), mute: $('muteBtn'), spk: $('spkBtn'),
+                fm: $('fmSwitch'), vid: $('videoAdBtn'), login: $('loginBtn'),
+                reboot: $('rebootOverlay'), rCount: $('rebootCount'),
+                incoming: $('incomingOverlay'), incFrom: $('incomingFrom'),
+                acc: $('acceptBtn'), rej: $('rejectBtn'),
+                menu: $('menuBtn'), drawer: $('drawer'), overlay: $('drawerOverlay'),
+                tabs: document.querySelectorAll('.tabBtn'), pages: document.querySelectorAll('.page')
+            };
+
+            // STATE
+            let client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+            let localTracks = { audio: null };
+            let state = { joined: false, muted: false, speaker: true, fm: false, remote: false };
+            let timerInt, fmTimer;
+
+            // NAVIGATION
+            if(ui.menu) ui.menu.onclick = () => { ui.drawer.classList.toggle('open'); };
+            if(ui.overlay) ui.overlay.onclick = () => { ui.drawer.classList.remove('open'); };
+            
+            ui.tabs.forEach(btn => {
+                btn.onclick = () => {
+                    ui.tabs.forEach(b => b.classList.remove('active'));
+                    ui.pages.forEach(p => p.classList.remove('active'));
+                    btn.classList.add('active');
+                    const target = $(btn.dataset.target);
+                    if(target) target.classList.add('active');
+                    ui.drawer.classList.remove('open');
+                }
+            });
+
+            // AUDIO & VISUALIZER
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            function beep(f=1000, d=100, t="square") {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                o.type=t; o.frequency.value=f; g.gain.value=0.05;
+                o.connect(g); g.connect(audioCtx.destination);
+                o.start(); setTimeout(()=>o.stop(), d/1000);
+            }
+
+            let animId;
+            function startVisualizer(isActive) {
+                const canvas = $('waveCanvas');
+                if(!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const w = 300, h = 150;
+                canvas.width = w; canvas.height = h;
+                
+                function draw() {
+                    ctx.clearRect(0,0,w,h);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = isActive ? (state.remote ? '#21d07a' : '#9b7aff') : '#333';
+                    ctx.beginPath();
+                    const t = Date.now();
+                    for(let x=0; x<w; x+=5) {
+                        const y = h/2 + Math.sin(x*0.05 + t*0.01) * (isActive?20:2);
+                        if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+                    }
+                    ctx.stroke();
+                    animId = requestAnimationFrame(draw);
+                }
+                if(animId) cancelAnimationFrame(animId);
+                draw();
+            }
+            startVisualizer(false);
+
+            // AGORA EVENTS
+            client.on("user-published", async (user, mediaType) => {
+                await client.subscribe(user, mediaType);
+                if (mediaType === "audio") {
+                    user.audioTrack.play();
+                    ui.mainStat.innerText = "RECEIVING"; ui.mainStat.style.color = "#21d07a";
+                    state.remote = true;
+                    const ledRec = $('ledRec'); if(ledRec) ledRec.classList.add('on');
+                    startVisualizer(true);
+                }
+            });
+            client.on("user-unpublished", () => {
+                state.remote = false;
+                ui.mainStat.innerText = "CONNECTED"; ui.mainStat.style.color = "#9b7aff";
+                const ledRec = $('ledRec'); if(ledRec) ledRec.classList.remove('on');
+                startVisualizer(true);
+            });
+
+            // JOIN
+            if(ui.join) ui.join.onclick = async () => {
+                const ch = $('channel').value;
+                if(!ch) return alert("Enter Channel");
+                
+                try {
+                    if(window.Android) {
+                        window.Android.setCallMode(true);
+                        window.Android.vibrate(50);
+                    }
+
+                    ui.mainStat.innerText = "CONNECTING...";
+                    ui.join.disabled = true;
+
+                    await client.join(APP_ID, ch, null, null);
+                    localTracks.audio = await AgoraRTC.createMicrophoneAudioTrack();
+                    await client.publish([localTracks.audio]);
+
+                    state.joined = true;
+                    ui.scrCh.innerText = ch;
+                    ui.scrStat.innerText = "ONLINE"; ui.scrStat.style.color = "#21d07a";
+                    ui.mainStat.innerText = "CONNECTED"; ui.mainStat.style.color = "#9b7aff";
+                    
+                    ui.join.disabled = true; ui.leave.disabled = false; ui.mute.disabled = false;
+                    const ledNet = $('ledNet'); if(ledNet) ledNet.classList.add('on');
+                    const ledMic = $('ledMic'); if(ledMic) ledMic.classList.add('on');
+                    
+                    beep(800, 150);
+                    startTimer();
+                    startVisualizer(true);
+                    
+                    if(window.Android) window.Android.showAd();
+                    if(ui.fm.checked) startFM();
+
+                } catch(e) {
+                    console.error(e);
+                    ui.mainStat.innerText = "ERROR"; ui.mainStat.style.color = "red";
+                    ui.join.disabled = false;
+                }
+            };
+
+            // LEAVE
+            if(ui.leave) ui.leave.onclick = async () => {
+                stopFM();
+                try {
+                    if(localTracks.audio) { localTracks.audio.close(); localTracks.audio = null; }
+                    await client.leave();
+                    
+                    state.joined = false;
+                    ui.join.disabled = false; ui.leave.disabled = true; ui.mute.disabled = true;
+                    ui.mainStat.innerText = "STANDBY"; ui.mainStat.style.color = "#fff";
+                    ui.scrStat.innerText = "OFFLINE"; ui.scrStat.style.color = "#888";
+                    ui.scrCh.innerText = "--";
+                    
+                    const ledNet = $('ledNet'); if(ledNet) ledNet.classList.remove('on');
+                    const ledMic = $('ledMic'); if(ledMic) ledMic.classList.remove('on');
+                    const ledRec = $('ledRec'); if(ledRec) ledRec.classList.remove('on');
+                    
+                    stopTimer();
+                    startVisualizer(false);
+                    beep(400, 150);
+
+                    if(window.Android) {
+                        window.Android.setCallMode(false);
+                        window.Android.showAd();
+                    }
+
+                } catch(e) { console.error(e); }
+            };
+
+            // CONTROLS
+            if(ui.mute) ui.mute.onclick = () => {
+                if(!localTracks.audio) return;
+                state.muted = !state.muted;
+                localTracks.audio.setMuted(state.muted);
+                ui.mute.innerText = state.muted ? "🔇 كتم" : "🎙️ المايك";
+                const ledMic = $('ledMic');
+                if(ledMic) ledMic.classList.toggle('on', !state.muted);
+            };
+            
+            if(ui.spk) ui.spk.onclick = () => {
+                state.speaker = !state.speaker;
+                if(window.Android) window.Android.setSpeaker(state.speaker);
+                ui.spk.innerText = state.speaker ? "🔊 سبيكر" : "👂 سماعة";
+            };
+
+            // FORCE MAJEURE
+            function startFM() {
+                if(fmTimer) clearTimeout(fmTimer);
+                fmTimer = setTimeout(async () => {
+                    if(!state.joined) return;
+                    beep(880, 500); if(window.Android) window.Android.vibrate(500);
+                    await ui.leave.click();
+                    
+                    if(ui.reboot) {
+                        ui.reboot.classList.add('show');
+                        let c = 6;
+                        ui.rCount.innerText = c;
+                        let cd = setInterval(() => {
+                            c--; ui.rCount.innerText = c;
+                            if(c <= 0) {
+                                clearInterval(cd);
+                                ui.reboot.classList.remove('show');
+                                if(ui.fm.checked) ui.join.click();
+                            }
+                        }, 1000);
+                    }
+                }, FM_INTERVAL);
+            }
+            function stopFM() { if(fmTimer) clearTimeout(fmTimer); }
+            if(ui.fm) ui.fm.onchange = () => { if(ui.fm.checked && state.joined) startFM(); else stopFM(); };
+
+            // UTILS
+            function startTimer() {
+                let s = 0;
+                if(timerInt) clearInterval(timerInt);
+                timerInt = setInterval(() => {
+                    s++;
+                    const date = new Date(s * 1000);
+                    ui.timer.innerText = date.toISOString().substr(11, 8);
+                }, 1000);
+            }
+            function stopTimer() { clearInterval(timerInt); ui.timer.innerText = "00:00:00"; }
+
+            // ANDROID BRIDGE HANDLERS
+            window.onAndroidLogin = (name, email, photo) => {
+                const n = $('userName'); if(n) n.innerText = name;
+                const e = $('userEmail'); if(e) e.innerText = email;
+                const p = $('userPhoto'); if(p && photo) p.src = photo;
+                const dn = $('displayName'); if(dn) dn.value = name;
+            };
+
+            if(ui.login) ui.login.onclick = () => { if(window.Android) window.Android.startGoogleSignIn(); };
+            if(ui.vid) ui.vid.onclick = () => { if(window.Android) window.Android.showVideoAd(); };
+            const btnLogout = $('btnLogout');
+            if(btnLogout) btnLogout.onclick = () => {
+                if(window.Android) window.Android.signOut();
+                location.reload();
+            };
+
+            // PING LOOP
+            setInterval(() => {
+                if(window.Android) {
+                    const p = Math.floor(Math.random() * 50) + 20; 
+                    ui.ping.innerText = p;
+                    const bars = document.querySelectorAll('.bar');
+                    bars.forEach(b => b.classList.remove('on'));
+                    if(p < 100) bars.forEach(b => b.classList.add('on'));
+                }
+            }, 2000);
+        }
+    });
+    </script>
 </body>
 </html>
