@@ -1,211 +1,351 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>غرفة التدريس الافتراضية - Meta Quest 3</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        /* إخفاء عناصر إدخال الملفات */
+        #pdf-file-input, #video-file-input { display: none; }
+    </style>
 
-  <title>VR Classroom</title>
+    <!-- 1. تحميل مكتبة A-Frame الأساسية (أحدث إصدار مستقر) -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="style.css">
+    <!-- 2. تحميل بيئة جاهزة (aframe-environment-component) لإضفاء جو مريح -->
+    <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
 
-  <!-- AFRAME -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- 3. تحميل إضافات A-Frame المساعدة (للحركة والتحكم بالأذرع) -->
+    <script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
 
-  <!-- ENVIRONMENT -->
-  <script src="https://unpkg.com/aframe-environment-component@1.4.0/dist/aframe-environment-component.min.js"></script>
-
-  <!-- JAVASCRIPT -->
-  <script defer src="app.js"></script>
+    <!-- 4. تحميل مكتبة PDF.js لعرض ملفات PDF داخل البيئة الافتراضية -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
-
 <body>
+    <!-- المشهد الافتراضي الرئيسي -->
+    <a-scene id="main-scene" background="color: #ECECEC" device-orientation-permission-ui="enabled: false">
 
-  <!-- ================================================= -->
-  <!-- FILE UPLOAD UI -->
-  <!-- ================================================= -->
+        <!-- ==================== الأصول (Assets) ==================== -->
+        <a-assets>
+            <!-- هنا يمكنك وضع روابط ملفات الصور والفيديو الثابتة مسبقاً -->
+            <!-- [عزيزي المدرّس]: استبدل الرابط أدناه برابط صورتك التعليمية -->
+            <img id="place-image" src="https://via.placeholder.com/800x600.png?text=ضع+رابط+الصورة+هنا" alt="صورة تعليمية">
 
-  <div id="uploadUI">
+            <!-- [عزيزي المدرّس]: استبدل الرابط أدناه برابط الفيديو التعليمي الخاص بك -->
+            <video id="place-video" src="https://cdn.aframe.io/videos/space.mp4" preload="auto" loop></video>
+        </a-assets>
 
-    <h2>VR Teacher Controls</h2>
+        <!-- ==================== البيئة (Environment) ==================== -->
+        <!-- يتم استخدام aframe-environment-component لإنشاء أرضية وشبكة مناسبة -->
+        <a-entity environment="preset: default; 
+                              groundTexture: walkernoise; 
+                              grid: cross; 
+                              playArea: 1; 
+                              lighting: contact; 
+                              skyType: none;">
+        </a-entity>
 
-    <!-- PDF -->
-    <label>Select PDF:</label>
-    <input type="file" id="pdfInput" accept=".pdf">
+        <!-- إضاءة إضافية لضمان وضوح الرؤية -->
+        <a-light type="ambient" intensity="0.7"></a-light>
+        <a-light type="directional" intensity="0.8" position="1 2 1"></a-light>
 
-    <!-- VIDEO -->
-    <label>Select Video:</label>
-    <input type="file" id="videoInput" accept="video/*">
+        <!-- ==================== الغرفة الافتراضية (الجدران) ==================== -->
+        <!-- جدار خلفي (سيكون خلف السبورة) -->
+        <a-plane position="0 1.5 -5" width="10" height="3.5" color="#DDDDDD" side="front"></a-plane>
+        <!-- جدار أيسر -->
+        <a-plane position="-5 1.5 0" rotation="0 90 0" width="10" height="3.5" color="#DDDDDD" side="front"></a-plane>
+        <!-- جدار أيمن -->
+        <a-plane position="5 1.5 0" rotation="0 -90 0" width="10" height="3.5" color="#DDDDDD" side="front"></a-plane>
+        <!-- سقف بسيط -->
+        <a-plane position="0 3.25 0" rotation="90 0 0" width="10" height="10" color="#CCCCCC" side="front"></a-plane>
 
-    <!-- IMAGE -->
-    <label>Select Image:</label>
-    <input type="file" id="imageInput" accept="image/*">
+        <!-- ==================== السبورة البيضاء (Whiteboard) ==================== -->
+        <!-- لوح عريض أبيض اللون موضوع أمام المستخدم -->
+        <a-plane id="whiteboard" position="0 1.6 -4.8" width="4" height="2.5" color="white" material="shader: flat; side: double;"></a-plane>
+        <!-- إطار خشبي للسبورة (اختياري) -->
+        <a-entity position="0 1.6 -4.79">
+            <a-box width="4.1" height="0.1" depth="0.05" color="#8B5A2B" position="0 1.25 0"></a-box>
+            <a-box width="4.1" height="0.1" depth="0.05" color="#8B5A2B" position="0 -1.25 0"></a-box>
+            <a-box width="0.1" height="2.5" depth="0.05" color="#8B5A2B" position="-2.05 0 0"></a-box>
+            <a-box width="0.1" height="2.5" depth="0.05" color="#8B5A2B" position="2.05 0 0"></a-box>
+        </a-entity>
 
-  </div>
+        <!-- ==================== شاشات عرض الوسائط المساعدة (Media Panels) ==================== -->
+        <!-- [عزيزي المدرّس]: هذه الشاشة لعرض الصور التعليمية -->
+        <a-image id="image-screen" src="#place-image" position="-2.5 1.6 -4.5" width="2" height="1.5" material="side: double;"></a-image>
+        <!-- نص صغير لتمييز شاشة الصور -->
+        <a-text value="شاشة الصور" position="-2.5 0.75 -4.49" color="black" width="2" align="center" scale="0.6 0.6 1"></a-text>
 
-  <!-- ================================================= -->
-  <!-- VR SCENE -->
-  <!-- ================================================= -->
+        <!-- [عزيزي المدرّس]: هذه الشاشة لعرض وتشغيل الفيديو -->
+        <!-- الفيديو قابل للتشغيل/الإيقاف عبر النظر والضغط عليه -->
+        <a-video id="video-screen" src="#place-video" position="2.5 1.6 -4.5" width="2.5" height="1.5" 
+                 class="clickable" play-pause-video material="side: double;">
+        </a-video>
+        <a-text value="شاشة الفيديو" position="2.5 0.75 -4.49" color="black" width="2" align="center" scale="0.6 0.6 1"></a-text>
 
-  <a-scene>
+        <!-- ==================== واجهة تحميل الملفات (PDF وفيديو) ==================== -->
+        <!-- أزرار تحميل الملفات من ذاكرة النظارة (تعمل بالنظر والضغط) -->
+        <!-- زر تحميل PDF -->
+        <a-entity id="load-pdf-btn" geometry="primitive: plane; width: 1.2; height: 0.4" 
+                  material="color: #4CAF50; shader: flat" 
+                  position="-1.5 0.4 -4.3" class="clickable" 
+                  onclick="document.getElementById('pdf-file-input').click()">
+            <a-text value="📂 تحميل PDF" position="0 0 0.01" color="white" width="1.5" align="center" scale="0.8 0.8 1"></a-text>
+        </a-entity>
 
-    <!-- ============================================= -->
-    <!-- ASSETS -->
-    <!-- ============================================= -->
+        <!-- زر تحميل فيديو -->
+        <a-entity id="load-video-btn" geometry="primitive: plane; width: 1.2; height: 0.4" 
+                  material="color: #2196F3; shader: flat" 
+                  position="1.5 0.4 -4.3" class="clickable" 
+                  onclick="document.getElementById('video-file-input').click()">
+            <a-text value="🎬 تحميل فيديو" position="0 0 0.01" color="white" width="1.5" align="center" scale="0.8 0.8 1"></a-text>
+        </a-entity>
 
-    <a-assets>
+        <!-- أزرار التنقل بين صفحات PDF (ستظهر تلقائياً بعد فتح ملف) -->
+        <a-entity id="pdf-controls" position="0 0.3 -4.3" visible="false">
+            <a-plane id="prev-page-btn" color="#333" width="0.25" height="0.25" position="-1.2 0 0" class="clickable" onclick="changePdfPage(-1)">
+                <a-text value="◀" color="white" align="center" position="0 0 0.01" scale="1.5 1.5 1"></a-text>
+            </a-plane>
+            <a-text id="page-indicator" value="صفحة: 1 / 1" color="white" position="0 0 0.01" width="2" align="center" scale="1 1 1"></a-text>
+            <a-plane id="next-page-btn" color="#333" width="0.25" height="0.25" position="1.2 0 0" class="clickable" onclick="changePdfPage(1)">
+                <a-text value="▶" color="white" align="center" position="0 0 0.01" scale="1.5 1.5 1"></a-text>
+            </a-plane>
+        </a-entity>
 
-      <!-- VIDEO -->
-      <!-- ضع رابط الفيديو هنا -->
-      <video
-        id="lessonVideo"
-        crossorigin="anonymous"
-        playsinline
-        webkit-playsinline
-        loop
-        src="https://cdn.aframe.io/videos/bunny.mp4">
-      </video>
+        <!-- زر مسح الرسومات (الرسم في الهواء) -->
+        <a-entity id="clear-draw-btn" geometry="primitive: plane; width: 0.8; height: 0.3"
+                  material="color: #f44336; shader: flat" 
+                  position="0 0.2 -4.3" class="clickable" onclick="clearAllDrawings()">
+            <a-text value="🗑️ مسح الرسم" position="0 0 0.01" color="white" width="1" align="center" scale="0.7 0.7 1"></a-text>
+        </a-entity>
 
-      <!-- IMAGE -->
-      <!-- ضع رابط الصورة هنا -->
-      <img
-        id="lessonImage"
-        src="https://cdn.aframe.io/a-painter/images/floor.jpg">
+        <!-- ==================== نظام الحركة والتجول ==================== -->
+        <!-- يستخدم movement-controls للتنقل بعصا التحكم (بدون تعارض مع رسم اليد اليمنى) -->
+        <a-entity id="player" movement-controls="speed: 0.15; fly: false; controls: gamepad">
+            <!-- الكاميرا مع مؤشر النظر (Gaze Cursor) للتفاعل -->
+            <a-camera id="head" look-controls="pointerLockEnabled: false" position="0 1.6 0">
+                <!-- مؤشر النظر: عند التحديق لمدة 1.5 ثانية يتم تنفيذ النقر -->
+                <a-cursor id="gaze-cursor" fuse="true" fuse-timeout="1500" 
+                          position="0 0 -1" 
+                          geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                          material="color: white; shader: flat" 
+                          raycaster="objects: .clickable">
+                </a-cursor>
+            </a-camera>
 
-    </a-assets>
+            <!-- وحدات تحكم اليد (Tracked Controllers) -->
+            <!-- اليد اليسرى (للإشارة أو التفاعل المستقبلي) -->
+            <a-entity id="left-hand" hand-controls="hand: left" hand-model-style="lowPoly" ></a-entity>
 
-    <!-- ============================================= -->
-    <!-- ENVIRONMENT -->
-    <!-- ============================================= -->
+            <!-- اليد اليمنى (تستخدم للرسم في الفراغ) -->
+            <a-entity id="right-hand" hand-controls="hand: right" hand-model-style="lowPoly" paint-controls></a-entity>
+        </a-entity>
 
-    <a-entity
-      environment="
-        preset: forest;
-        groundColor: #445;
-        skyType: atmosphere;
-      ">
-    </a-entity>
+        <!-- ==================== عناصر مساعدة مخفية ==================== -->
+        <!-- شاشة عرض ملفات PDF (سيتم استبدال نسيجها ديناميكياً) -->
+        <a-plane id="pdf-screen" position="-2.5 1.6 -4.5" width="2" height="1.5" material="shader: flat; color: white; side: double;" visible="false"></a-plane>
 
-    <!-- ============================================= -->
-    <!-- LIGHTS -->
-    <!-- ============================================= -->
+        <!-- مدخلات ملفات من ذاكرة النظارة -->
+        <input type="file" id="pdf-file-input" accept="application/pdf,.pdf">
+        <input type="file" id="video-file-input" accept="video/*">
+    </a-scene>
 
-    <a-light
-      type="ambient"
-      intensity="1.2">
-    </a-light>
+    <!-- ==================== برمجيات جافاسكريبت المخصصة ==================== -->
+    <script>
+        // تهيئة PDF.js (مكتبة عرض PDF)
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
 
-    <a-light
-      type="directional"
-      intensity="1"
-      position="2 4 1">
-    </a-light>
+        // ---------- مكون الرسم الديناميكي (dynamic-line) ----------
+        // مسؤول عن رسم خط ثلاثي الأبعاد في الفراغ عند تحريك يد التحكم
+        AFRAME.registerComponent('dynamic-line', {
+            schema: {
+                color: { type: 'color', default: '#3366FF' } // لون الخط أزرق واضح
+            },
+            init: function () {
+                this.points = [];
+                // إعداد الهندسة والمادة لرسم خط باستخدام THREE.js
+                const geometry = new THREE.BufferGeometry();
+                const material = new THREE.LineBasicMaterial({ color: this.data.color, linewidth: 1 }); // ملاحظة: عرض الخط لا يدعم التغيير بسهولة في WebGL
+                this.line = new THREE.Line(geometry, material);
+                this.el.setObject3D('mesh', this.line);
+            },
+            addPoint: function (position) {
+                this.points.push(position.clone());
+                this.updateGeometry();
+            },
+            updateGeometry: function () {
+                if (this.points.length < 2) return;
+                const positions = [];
+                this.points.forEach(p => positions.push(p.x, p.y, p.z));
+                this.line.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                this.line.geometry.setDrawRange(0, this.points.length);
+            },
+            endStroke: function () {
+                // يمكن إضافة تنظيف هنا عند الحاجة
+            }
+        });
 
-    <!-- ============================================= -->
-    <!-- FLOOR -->
-    <!-- ============================================= -->
+        // ---------- مكون التحكم بالرسم (paint-controls) ----------
+        // يربط حدث الضغط على الزناد بإنشاء خط متصل في الفراغ
+        AFRAME.registerComponent('paint-controls', {
+            init: function () {
+                this.isDrawing = false;
+                this.currentStroke = null;
+                this.strokeParent = document.querySelector('a-scene'); // أو يمكن إضافته لمجموعة خاصة
 
-    <a-plane
-      rotation="-90 0 0"
-      width="30"
-      height="30"
-      color="#DDDDDD">
-    </a-plane>
+                // الاستماع لأحداث ضغط الزناد من أزرار التحكم
+                this.el.addEventListener('triggerdown', (e) => {
+                    this.startDrawing();
+                });
+                this.el.addEventListener('triggerup', (e) => {
+                    this.stopDrawing();
+                });
+            },
+            startDrawing: function () {
+                this.isDrawing = true;
+                // إنشاء كيان جديد للخط
+                const strokeEntity = document.createElement('a-entity');
+                strokeEntity.setAttribute('dynamic-line', 'color: #FF3300'); // لون الرسم أحمر واضح، يمكن تغييره
+                this.strokeParent.appendChild(strokeEntity);
+                this.currentStroke = strokeEntity;
+                // إضافة أول نقطة من موضع اليد الحالي
+                const pos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                strokeEntity.components['dynamic-line'].addPoint(pos);
+            },
+            stopDrawing: function () {
+                this.isDrawing = false;
+                if (this.currentStroke) {
+                    this.currentStroke.components['dynamic-line'].endStroke();
+                    this.currentStroke = null;
+                }
+            },
+            tick: function () {
+                if (this.isDrawing && this.currentStroke) {
+                    const pos = this.el.object3D.getWorldPosition(new THREE.Vector3());
+                    this.currentStroke.components['dynamic-line'].addPoint(pos);
+                }
+            },
+            remove: function () {
+                this.el.removeEventListener('triggerdown', this.startDrawing);
+                this.el.removeEventListener('triggerup', this.stopDrawing);
+            }
+        });
 
-    <!-- ============================================= -->
-    <!-- WHITEBOARD -->
-    <!-- ============================================= -->
+        // ---------- مكون تشغيل/إيقاف الفيديو بالنقر (play-pause-video) ----------
+        AFRAME.registerComponent('play-pause-video', {
+            init: function () {
+                this.el.addEventListener('click', () => {
+                    // الوصول إلى عنصر الفيديو الأساسي
+                    const videoElement = this.el.components.material.material.map.image;
+                    if (videoElement && videoElement.tagName === 'VIDEO') {
+                        if (videoElement.paused) {
+                            videoElement.play();
+                        } else {
+                            videoElement.pause();
+                        }
+                    }
+                });
+            }
+        });
 
-    <a-plane
-      id="whiteboard"
-      position="0 2 -4"
-      width="6"
-      height="3"
-      color="white">
-    </a-plane>
+        // ---------- وظائف عرض ملفات PDF ----------
+        let currentPdfDoc = null;
+        let currentPageNum = 1;
+        let pdfCanvas = document.createElement('canvas');
+        let pdfScale = 1.5;
 
-    <!-- ============================================= -->
-    <!-- PDF SCREEN -->
-    <!-- ============================================= -->
+        // معالجة اختيار ملف PDF
+        document.getElementById('pdf-file-input').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const typedarray = new Uint8Array(ev.target.result);
+                pdfjsLib.getDocument(typedarray).promise.then(function (pdf) {
+                    currentPdfDoc = pdf;
+                    currentPageNum = 1;
+                    // إظهار شاشة PDF وأدوات التحكم
+                    document.querySelector('#image-screen').setAttribute('visible', false);
+                    document.querySelector('#pdf-screen').setAttribute('visible', true);
+                    document.querySelector('#pdf-controls').setAttribute('visible', true);
+                    renderPdfPage(currentPageNum);
+                }).catch(function (error) {
+                    alert('حدث خطأ في قراءة ملف PDF: ' + error.message);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        });
 
-    <a-plane
-      position="-4 2 -3"
-      width="2.5"
-      height="3"
-      color="#222">
-    </a-plane>
+        // دالة عرض صفحة PDF محددة
+        function renderPdfPage(pageNum) {
+            if (!currentPdfDoc) return;
+            currentPdfDoc.getPage(pageNum).then(function (page) {
+                const viewport = page.getViewport({ scale: pdfScale });
+                pdfCanvas.width = viewport.width;
+                pdfCanvas.height = viewport.height;
+                const ctx = pdfCanvas.getContext('2d');
+                return page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            }).then(function () {
+                // تطبيق النسيج على الشاشة المخصصة للـ PDF
+                const pdfScreen = document.querySelector('#pdf-screen');
+                const mesh = pdfScreen.getObject3D('mesh');
+                if (mesh) {
+                    const texture = new THREE.CanvasTexture(pdfCanvas);
+                    mesh.material.map = texture;
+                    mesh.material.needsUpdate = true;
+                }
+                // تحديث مؤشر الصفحات
+                document.querySelector('#page-indicator').setAttribute('value', 
+                    `صفحة: ${pageNum} / ${currentPdfDoc.numPages}`);
+                currentPageNum = pageNum;
+            }).catch(function (error) {
+                console.error('خطأ في عرض الصفحة:', error);
+            });
+        }
 
-    <a-text
-      value="PDF SCREEN"
-      position="-4 2 -2.9"
-      align="center"
-      width="4"
-      color="white">
-    </a-text>
+        // التنقل بين الصفحات
+        function changePdfPage(delta) {
+            if (!currentPdfDoc) return;
+            const newPage = currentPageNum + delta;
+            if (newPage < 1 || newPage > currentPdfDoc.numPages) return;
+            renderPdfPage(newPage);
+        }
 
-    <!-- ============================================= -->
-    <!-- IMAGE SCREEN -->
-    <!-- ============================================= -->
+        // ---------- وظائف تحميل الفيديو من ذاكرة النظارة ----------
+        let currentVideoURL = null;
+        document.getElementById('video-file-input').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            // إلغاء عنوان URL السابق إذا وجد
+            if (currentVideoURL) {
+                URL.revokeObjectURL(currentVideoURL);
+            }
+            currentVideoURL = URL.createObjectURL(file);
+            // تحديث شاشة الفيديو
+            const videoScreen = document.querySelector('#video-screen');
+            videoScreen.setAttribute('src', currentVideoURL);
+            // تشغيل الفيديو تلقائياً بعد التحميل (يمكنك تعديله)
+            videoScreen.components.material.material.map.image.play();
+        });
 
-    <a-image
-      id="imagePanel"
-      src="#lessonImage"
-      position="4 2 -3"
-      width="3"
-      height="2">
-    </a-image>
+        // ---------- مسح كل رسومات الفراغ ----------
+        function clearAllDrawings() {
+            const scene = document.querySelector('a-scene');
+            // نبحث عن كل الكيانات التي تحمل مكون dynamic-line ونحذفها
+            const strokes = scene.querySelectorAll('[dynamic-line]');
+            strokes.forEach(stroke => {
+                stroke.parentNode.removeChild(stroke);
+            });
+        }
 
-    <!-- ============================================= -->
-    <!-- VIDEO SCREEN -->
-    <!-- ============================================= -->
-
-    <a-video
-      id="videoScreen"
-      src="#lessonVideo"
-      position="0 4 -4"
-      width="4"
-      height="2.2"
-      class="clickable">
-    </a-video>
-
-    <!-- ============================================= -->
-    <!-- CAMERA + MOVEMENT -->
-    <!-- ============================================= -->
-
-    <a-entity
-      id="rig"
-      position="0 0 2">
-
-      <!-- CAMERA -->
-      <a-camera
-        wasd-controls="acceleration: 30">
-
-        <a-cursor
-          raycaster="objects: .clickable"
-          fuse="false">
-        </a-cursor>
-
-      </a-camera>
-
-      <!-- LEFT CONTROLLER -->
-      <a-entity
-        id="leftHand"
-        laser-controls="hand: left"
-        line="color: red">
-      </a-entity>
-
-      <!-- RIGHT CONTROLLER -->
-      <a-entity
-        id="rightHand"
-        laser-controls="hand: right"
-        line="color: blue">
-      </a-entity>
-
-    </a-entity>
-
-  </a-scene>
-
+        // ---------- إعدادات أولية عند التحميل ----------
+        window.addEventListener('load', function () {
+            // يمكن إضافة أي إعدادات إضافية هنا
+            console.log('غرفة التدريس الافتراضية جاهزة!');
+        });
+    </script>
 </body>
-
 </html>
