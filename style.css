@@ -1,1 +1,42 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
 
+/* ======================================= */
+/* CONTROL PANEL */
+/* ======================================= */
+
+#uploadUI {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+
+  z-index: 9999;
+
+  background: rgba(0,0,0,0.75);
+
+  padding: 15px;
+
+  border-radius: 12px;
+
+  color: white;
+
+  width: 250px;
+}
+
+#uploadUI h2 {
+  margin-top: 0;
+  font-size: 20px;
+}
+
+#uploadUI label {
+  display: block;
+  margin-top: 15px;
+  margin-bottom: 5px;
+}
+
+#uploadUI input {
+  width: 100%;
+}
