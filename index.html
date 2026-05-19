@@ -1,426 +1,211 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>VR Teaching Room - Meta Quest 3</title>
+  <title>VR Classroom</title>
 
-  <!-- A-Frame -->
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- AFRAME -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
-  <!-- Environment Component -->
+  <!-- ENVIRONMENT -->
   <script src="https://unpkg.com/aframe-environment-component@1.4.0/dist/aframe-environment-component.min.js"></script>
 
-  <!-- Super Hands -->
-  <script src="https://unpkg.com/super-hands@5.0.4/dist/super-hands.min.js"></script>
-
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: Arial;
-    }
-
-    #uploadUI {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 9999;
-      background: rgba(0,0,0,0.7);
-      padding: 10px;
-      border-radius: 10px;
-      color: white;
-    }
-
-    #uploadUI input {
-      margin-top: 5px;
-      margin-bottom: 10px;
-      width: 250px;
-    }
-  </style>
+  <!-- JAVASCRIPT -->
+  <script defer src="app.js"></script>
 </head>
 
 <body>
 
-<!-- ========================================================= -->
-<!-- FILE UPLOAD UI -->
-<!-- ========================================================= -->
+  <!-- ================================================= -->
+  <!-- FILE UPLOAD UI -->
+  <!-- ================================================= -->
 
-<div id="uploadUI">
+  <div id="uploadUI">
 
-  <h3>VR Teacher Controls</h3>
+    <h2>VR Teacher Controls</h2>
 
-  <!-- PDF FILE -->
-  <label>Choose PDF File:</label><br>
-  <input type="file" id="pdfInput" accept=".pdf"><br>
+    <!-- PDF -->
+    <label>Select PDF:</label>
+    <input type="file" id="pdfInput" accept=".pdf">
 
-  <!-- VIDEO FILE -->
-  <label>Choose Video File:</label><br>
-  <input type="file" id="videoInput" accept="video/*"><br>
+    <!-- VIDEO -->
+    <label>Select Video:</label>
+    <input type="file" id="videoInput" accept="video/*">
 
-  <!-- IMAGE FILE -->
-  <label>Choose Image File:</label><br>
-  <input type="file" id="imageInput" accept="image/*"><br>
+    <!-- IMAGE -->
+    <label>Select Image:</label>
+    <input type="file" id="imageInput" accept="image/*">
 
-</div>
+  </div>
 
-<!-- ========================================================= -->
-<!-- AFRAME SCENE -->
-<!-- ========================================================= -->
+  <!-- ================================================= -->
+  <!-- VR SCENE -->
+  <!-- ================================================= -->
 
-<a-scene
-  background="color: #ECECEC"
-  renderer="colorManagement: true;"
-  vr-mode-ui="enabled: true"
-  device-orientation-permission-ui="enabled: true"
->
+  <a-scene>
 
-  <!-- ========================================================= -->
-  <!-- ASSETS -->
-  <!-- ========================================================= -->
+    <!-- ============================================= -->
+    <!-- ASSETS -->
+    <!-- ============================================= -->
 
-  <a-assets>
+    <a-assets>
 
-    <!-- ===================================================== -->
-    <!-- DEFAULT VIDEO -->
-    <!-- ضع رابط الفيديو الخاص بك هنا -->
-    <!-- ===================================================== -->
+      <!-- VIDEO -->
+      <!-- ضع رابط الفيديو هنا -->
+      <video
+        id="lessonVideo"
+        crossorigin="anonymous"
+        playsinline
+        webkit-playsinline
+        loop
+        src="https://cdn.aframe.io/videos/bunny.mp4">
+      </video>
 
-    <video
-      id="lessonVideo"
-      crossorigin="anonymous"
-      playsinline
-      webkit-playsinline
-      loop
-      src="https://cdn.aframe.io/videos/bunny.mp4">
-    </video>
+      <!-- IMAGE -->
+      <!-- ضع رابط الصورة هنا -->
+      <img
+        id="lessonImage"
+        src="https://cdn.aframe.io/a-painter/images/floor.jpg">
 
-    <!-- ===================================================== -->
-    <!-- DEFAULT IMAGE -->
-    <!-- ضع رابط الصورة التعليمية هنا -->
-    <!-- ===================================================== -->
+    </a-assets>
 
-    <img
-      id="lessonImage"
-      src="https://cdn.aframe.io/a-painter/images/floor.jpg">
-
-  </a-assets>
-
-  <!-- ========================================================= -->
-  <!-- ENVIRONMENT -->
-  <!-- ========================================================= -->
-
-  <a-entity
-    environment="
-      preset: forest;
-      groundColor: #445;
-      skyType: atmosphere;
-      lighting: point;
-      shadow: true;
-      dressingAmount: 20;
-    ">
-  </a-entity>
-
-  <!-- ========================================================= -->
-  <!-- LIGHTING -->
-  <!-- ========================================================= -->
-
-  <a-light
-    type="ambient"
-    intensity="1.2"
-    color="#FFFFFF">
-  </a-light>
-
-  <a-light
-    type="directional"
-    intensity="1"
-    position="2 4 1">
-  </a-light>
-
-  <!-- ========================================================= -->
-  <!-- FLOOR -->
-  <!-- ========================================================= -->
-
-  <a-plane
-    rotation="-90 0 0"
-    width="30"
-    height="30"
-    color="#DDDDDD">
-  </a-plane>
-
-  <!-- ========================================================= -->
-  <!-- MAIN WHITEBOARD -->
-  <!-- ========================================================= -->
-
-  <a-plane
-    id="whiteboard"
-    position="0 2 -4"
-    width="6"
-    height="3"
-    color="#FFFFFF"
-    material="shader: flat">
-  </a-plane>
-
-  <!-- FRAME -->
-  <a-box
-    position="0 2 -4.05"
-    width="6.2"
-    height="3.2"
-    depth="0.05"
-    color="#333333">
-  </a-box>
-
-  <!-- ========================================================= -->
-  <!-- PDF SCREEN -->
-  <!-- ========================================================= -->
-
-  <!--
-    سيتم عرض ملفات PDF داخل iframe ثنائي الأبعاد.
-    متصفح Quest يدعم فتح PDF في تبويب منفصل.
-  -->
-
-  <a-plane
-    id="pdfScreen"
-    position="-4 2 -3"
-    width="2.5"
-    height="3"
-    color="#222">
-  </a-plane>
-
-  <a-text
-    value="PDF SCREEN\nChoose PDF from top-left menu"
-    position="-4 2 -2.9"
-    align="center"
-    width="4"
-    color="white">
-  </a-text>
-
-  <!-- ========================================================= -->
-  <!-- IMAGE SCREEN -->
-  <!-- ========================================================= -->
-
-  <a-image
-    id="imagePanel"
-    src="#lessonImage"
-    position="4 2 -3"
-    width="3"
-    height="2">
-  </a-image>
-
-  <!-- ========================================================= -->
-  <!-- VIDEO SCREEN -->
-  <!-- ========================================================= -->
-
-  <a-video
-    id="videoScreen"
-    src="#lessonVideo"
-    position="0 4 -4"
-    width="4"
-    height="2.2"
-    class="clickable">
-  </a-video>
-
-  <!-- ========================================================= -->
-  <!-- CAMERA + MOVEMENT -->
-  <!-- ========================================================= -->
-
-  <a-entity
-    id="rig"
-    position="0 0 2">
-
-    <!-- CAMERA -->
-    <a-camera
-      wasd-controls="acceleration: 30"
-      look-controls="pointerLockEnabled: true">
-
-      <!-- CURSOR -->
-      <a-cursor
-        raycaster="objects: .clickable"
-        fuse="false">
-      </a-cursor>
-
-    </a-camera>
-
-    <!-- ===================================================== -->
-    <!-- LEFT HAND -->
-    <!-- ===================================================== -->
+    <!-- ============================================= -->
+    <!-- ENVIRONMENT -->
+    <!-- ============================================= -->
 
     <a-entity
-      id="leftHand"
-      laser-controls="hand: left"
-      raycaster="objects: .clickable"
-      line="color: red">
+      environment="
+        preset: forest;
+        groundColor: #445;
+        skyType: atmosphere;
+      ">
     </a-entity>
 
-    <!-- ===================================================== -->
-    <!-- RIGHT HAND -->
-    <!-- ===================================================== -->
+    <!-- ============================================= -->
+    <!-- LIGHTS -->
+    <!-- ============================================= -->
+
+    <a-light
+      type="ambient"
+      intensity="1.2">
+    </a-light>
+
+    <a-light
+      type="directional"
+      intensity="1"
+      position="2 4 1">
+    </a-light>
+
+    <!-- ============================================= -->
+    <!-- FLOOR -->
+    <!-- ============================================= -->
+
+    <a-plane
+      rotation="-90 0 0"
+      width="30"
+      height="30"
+      color="#DDDDDD">
+    </a-plane>
+
+    <!-- ============================================= -->
+    <!-- WHITEBOARD -->
+    <!-- ============================================= -->
+
+    <a-plane
+      id="whiteboard"
+      position="0 2 -4"
+      width="6"
+      height="3"
+      color="white">
+    </a-plane>
+
+    <!-- ============================================= -->
+    <!-- PDF SCREEN -->
+    <!-- ============================================= -->
+
+    <a-plane
+      position="-4 2 -3"
+      width="2.5"
+      height="3"
+      color="#222">
+    </a-plane>
+
+    <a-text
+      value="PDF SCREEN"
+      position="-4 2 -2.9"
+      align="center"
+      width="4"
+      color="white">
+    </a-text>
+
+    <!-- ============================================= -->
+    <!-- IMAGE SCREEN -->
+    <!-- ============================================= -->
+
+    <a-image
+      id="imagePanel"
+      src="#lessonImage"
+      position="4 2 -3"
+      width="3"
+      height="2">
+    </a-image>
+
+    <!-- ============================================= -->
+    <!-- VIDEO SCREEN -->
+    <!-- ============================================= -->
+
+    <a-video
+      id="videoScreen"
+      src="#lessonVideo"
+      position="0 4 -4"
+      width="4"
+      height="2.2"
+      class="clickable">
+    </a-video>
+
+    <!-- ============================================= -->
+    <!-- CAMERA + MOVEMENT -->
+    <!-- ============================================= -->
 
     <a-entity
-      id="rightHand"
-      laser-controls="hand: right"
-      raycaster="objects: .clickable"
-      line="color: blue">
+      id="rig"
+      position="0 0 2">
+
+      <!-- CAMERA -->
+      <a-camera
+        wasd-controls="acceleration: 30">
+
+        <a-cursor
+          raycaster="objects: .clickable"
+          fuse="false">
+        </a-cursor>
+
+      </a-camera>
+
+      <!-- LEFT CONTROLLER -->
+      <a-entity
+        id="leftHand"
+        laser-controls="hand: left"
+        line="color: red">
+      </a-entity>
+
+      <!-- RIGHT CONTROLLER -->
+      <a-entity
+        id="rightHand"
+        laser-controls="hand: right"
+        line="color: blue">
+      </a-entity>
+
     </a-entity>
 
-  </a-entity>
-
-</a-scene>
-
-<!-- ========================================================= -->
-<!-- JAVASCRIPT -->
-<!-- ========================================================= -->
-
-<script>
-
-  // =========================================================
-  // VIDEO PLAY / PAUSE
-  // =========================================================
-
-  const video = document.querySelector('#lessonVideo');
-  const videoScreen = document.querySelector('#videoScreen');
-
-  videoScreen.addEventListener('click', () => {
-
-    if(video.paused){
-      video.play();
-    } else {
-      video.pause();
-    }
-
-  });
-
-  // =========================================================
-  // IMAGE UPLOAD
-  // =========================================================
-
-  document.getElementById('imageInput')
-    .addEventListener('change', function(event){
-
-      const file = event.target.files[0];
-
-      if(file){
-
-        const url = URL.createObjectURL(file);
-
-        document
-          .querySelector('#imagePanel')
-          .setAttribute('src', url);
-
-      }
-
-  });
-
-  // =========================================================
-  // VIDEO UPLOAD
-  // =========================================================
-
-  document.getElementById('videoInput')
-    .addEventListener('change', function(event){
-
-      const file = event.target.files[0];
-
-      if(file){
-
-        const url = URL.createObjectURL(file);
-
-        video.src = url;
-        video.load();
-
-      }
-
-  });
-
-  // =========================================================
-  // PDF OPEN
-  // =========================================================
-
-  document.getElementById('pdfInput')
-    .addEventListener('change', function(event){
-
-      const file = event.target.files[0];
-
-      if(file){
-
-        const url = URL.createObjectURL(file);
-
-        // فتح PDF داخل تبويب جديد
-        // Meta Quest Browser يدعم ذلك
-        window.open(url, '_blank');
-
-      }
-
-  });
-
-  // =========================================================
-  // SIMPLE VR DRAWING SYSTEM
-  // =========================================================
-
-  let drawing = false;
-  let currentLine = [];
-  let lineEntity = null;
-
-  const scene = document.querySelector('a-scene');
-  const rightHand = document.querySelector('#rightHand');
-
-  // START DRAWING
-  rightHand.addEventListener('triggerdown', () => {
-
-    drawing = true;
-
-    currentLine = [];
-
-    lineEntity = document.createElement('a-entity');
-
-    lineEntity.setAttribute('line', {
-      start: '0 0 0',
-      end: '0 0 0',
-      color: '#0000FF'
-    });
-
-    scene.appendChild(lineEntity);
-
-  });
-
-  // STOP DRAWING
-  rightHand.addEventListener('triggerup', () => {
-
-    drawing = false;
-
-  });
-
-  // DRAW LOOP
-  scene.addEventListener('tick', () => {
-
-    if(!drawing) return;
-
-    const pos = rightHand.object3D.position;
-
-    currentLine.push({
-      x: pos.x,
-      y: pos.y,
-      z: pos.z
-    });
-
-    if(currentLine.length < 2) return;
-
-    let path = "";
-
-    currentLine.forEach(p => {
-
-      path += `${p.x} ${p.y} ${p.z}, `;
-
-    });
-
-    lineEntity.setAttribute('line', {
-      path: path,
-      color: '#0000FF'
-    });
-
-  });
-
-</script>
+  </a-scene>
 
 </body>
+
 </html>
